@@ -63,9 +63,17 @@ def fetch_nse_pre_market():
 
         # Determine actual data date from NSE payload / metadata (preferred)
         data_date = None
-        # check common top-level fields
+        # check common top-level fields (include lastUpdateTime)
         if isinstance(payload, dict):
-            for key in ("tradingDate", "date", "timeStamp", "timestamp", "lastUpdate", "updatedOn"):
+            for key in (
+                "tradingDate",
+                "date",
+                "timeStamp",
+                "timestamp",
+                "lastUpdate",
+                "lastUpdateTime",
+                "updatedOn",
+            ):
                 v = payload.get(key)
                 if v:
                     try:
@@ -81,7 +89,16 @@ def fetch_nse_pre_market():
             candidates = []
             for item in data:
                 meta = item.get("metadata", {}) or {}
-                for k in ("date", "tradingDate", "timeStamp", "timestamp", "ltpDate", "lastUpdate", "updatedOn"):
+                for k in (
+                    "date",
+                    "tradingDate",
+                    "timeStamp",
+                    "timestamp",
+                    "ltpDate",
+                    "lastUpdate",
+                    "lastUpdateTime",
+                    "updatedOn",
+                ):
                     v = meta.get(k)
                     if v:
                         try:
