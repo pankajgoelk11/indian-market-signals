@@ -46,7 +46,8 @@ def fetch_nse_pre_market():
         if response.status_code != 200:
             return None, None
 
-        data = response.json().get("data", [])
+        payload = response.json()
+        data = payload.get("data", []) if isinstance(payload, dict) else []
         records = []
         for item in data:
             meta = item.get("metadata", {})
@@ -60,12 +61,45 @@ def fetch_nse_pre_market():
 
         df = pd.DataFrame(records)
 
-        # Determine actual data date from NSE (if available from metadata)
-        # Otherwise fallback to yesterday
-        data_date = now.strftime("%Y-%m-%d")
-        if df.empty or now.time() > datetime.strptime("09:30", "%H:%M").time():
-            # market already open/closed → use last available data date
-            data_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        # Determine actual data date from NSE payload / metadata (preferred)
+        data_date = None
+        # check common top-level fields
+        if isinstance(payload, dict):
+            for key in ("tradingDate", "date", "timeStamp", "timestamp", "lastUpdate", "updatedOn"):
+                v = payload.get(key)
+                if v:
+                    try:
+                        dt = pd.to_datetime(v, errors="coerce")
+                        if pd.notna(dt):
+                            data_date = dt.strftime("%Y-%m-%d")
+                            break
+                    except Exception:
+                        continue
+
+        # if not found, check per-item metadata for a date field and pick the latest
+        if data_date is None and not df.empty:
+            candidates = []
+            for item in data:
+                meta = item.get("metadata", {}) or {}
+                for k in ("date", "tradingDate", "timeStamp", "timestamp", "ltpDate", "lastUpdate", "updatedOn"):
+                    v = meta.get(k)
+                    if v:
+                        try:
+                            dt = pd.to_datetime(v, errors="coerce")
+                            if pd.notna(dt):
+                                candidates.append(dt)
+                        except Exception:
+                            continue
+            if candidates:
+                data_date = max(candidates).strftime("%Y-%m-%d")
+
+        # Fallback: if we still don't have a data_date, fall back to previous day when df empty,
+        # otherwise assume today's date (best-effort)
+        if data_date is None:
+            if df.empty:
+                data_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+            else:
+                data_date = now.strftime("%Y-%m-%d")
 
         return df, data_date
     except:
