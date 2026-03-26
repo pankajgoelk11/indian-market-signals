@@ -1,0 +1,10 @@
+.DS_Store
+.idea/
+.vscode/
+
+# Python (app lives in indian_market_signals/)
+indian_market_signals/.venv/
+indian_market_signals/__pycache__/
+*.py[cod]
+indian_market_signals/.streamlit/secrets.toml
+.env
